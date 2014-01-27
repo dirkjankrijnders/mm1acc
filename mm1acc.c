@@ -31,13 +31,20 @@
 #define PINT0 PB2
 
 #define _GIMSK GIMSK
+#define _MCUCR MCUCR
 #define TIMER_OVF_vect TIMER0_OVF_vect
 #define TIMER_COMPA_vect TIMER0_COMPA_vect
+#define _TIMSK TIMSK
 #endif
 
 #if defined( __AVR_ATtiny24__ ) | \
 defined( __AVR_ATtiny44__ ) | \
 defined( __AVR_ATtiny84__ )
+
+#define PORTINT0 PORTB
+#define DDRINT0 DDRB
+#define PININT0 PINB
+#define PINT0 PB2
 
 #define _GIMSK GIMSK
 #define _MCUCR MCUCR
@@ -151,7 +158,7 @@ void mm1acc_init() {
 	 */
 
 	// INT0 as input:
-	DDRINT0 &= ~(1 << PD2);
+	DDRINT0 &= ~(1 << PINT0);
 
 #ifdef DEBUG
 	// PD4, 5, 6 (arduino pin 4, 5, 6) as output for debug
