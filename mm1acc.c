@@ -18,7 +18,7 @@
 // Defaults
 #define _GIMSK EIMSK
 #define _MCUCR EICRA
-#define TIMSK TIMSK0
+#define _TIMSK TIMSK0
 #define TIMER_OVF_vect TIMER0_OVF_vect
 #define TIMER_COMPA_vect TIMER0_COMPA_vect
 
@@ -43,7 +43,7 @@ defined( __AVR_ATtiny84__ )
 #define _MCUCR MCUCR
 #define TIMER_OVF_vect TIM0_OVF_vect
 #define TIMER_COMPA_vect TIM0_COMPA_vect
-#define TIMSK TIMSK0
+#define _TIMSK TIMSK0
 #endif
 
 volatile uint8_t newdata = 0;
@@ -132,7 +132,7 @@ void mm1acc_init() {
 
 	// Setup the interrupt for the output compare unit
 	// Setup the interrupt for the overflow
-	TIMSK = (1 << OCIE0A) | (1 << TOIE0);
+	_TIMSK = (1 << OCIE0A) | (1 << TOIE0);
 
 	/* Setup rising edge interrupt on INT0
 	 * ===================================
