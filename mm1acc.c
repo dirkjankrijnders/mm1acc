@@ -18,7 +18,7 @@
 // Defaults
 #define _GIMSK EIMSK
 #define _MCUCR EICRA
-#define TIMSK TIMSK0
+#define _TIMSK TIMSK0
 #define TIMER_OVF_vect TIMER0_OVF_vect
 #define TIMER_COMPA_vect TIMER0_COMPA_vect
 
@@ -31,19 +31,26 @@
 #define PINT0 PB2
 
 #define _GIMSK GIMSK
+#define _MCUCR MCUCR
 #define TIMER_OVF_vect TIMER0_OVF_vect
 #define TIMER_COMPA_vect TIMER0_COMPA_vect
+#define _TIMSK TIMSK
 #endif
 
 #if defined( __AVR_ATtiny24__ ) | \
 defined( __AVR_ATtiny44__ ) | \
 defined( __AVR_ATtiny84__ )
 
+#define PORTINT0 PORTB
+#define DDRINT0 DDRB
+#define PININT0 PINB
+#define PINT0 PB2
+
 #define _GIMSK GIMSK
 #define _MCUCR MCUCR
 #define TIMER_OVF_vect TIM0_OVF_vect
 #define TIMER_COMPA_vect TIM0_COMPA_vect
-#define TIMSK TIMSK0
+#define _TIMSK TIMSK0
 #endif
 
 volatile uint8_t newdata = 0;
@@ -132,7 +139,7 @@ void mm1acc_init() {
 
 	// Setup the interrupt for the output compare unit
 	// Setup the interrupt for the overflow
-	TIMSK = (1 << OCIE0A) | (1 << TOIE0);
+	_TIMSK = (1 << OCIE0A) | (1 << TOIE0);
 
 	/* Setup rising edge interrupt on INT0
 	 * ===================================
@@ -151,7 +158,7 @@ void mm1acc_init() {
 	 */
 
 	// INT0 as input:
-	DDRINT0 &= ~(1 << PD2);
+	DDRINT0 &= ~(1 << PINT0);
 
 #ifdef DEBUG
 	// PD4, 5, 6 (arduino pin 4, 5, 6) as output for debug
