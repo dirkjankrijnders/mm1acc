@@ -111,7 +111,7 @@ ISR(TIMER_COMPA_vect) {
 	bit = (PININT0 & (1 << PINT0)) ? 1 : 0;
 	if ((bits < 8) & bit) { // Still in the address part
 		current_data->address |= (bit << (7 - bits));
-	} else if (bits == 17) {
+	} else if (bits > 15) {
 		current_data->function = bit;
 	} else {
 		current_data->port |= (bit << (15 - bits));
