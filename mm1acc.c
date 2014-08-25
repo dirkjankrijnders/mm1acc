@@ -114,7 +114,7 @@ ISR(TIMER_COMPA_vect) {
 	} else if (bits > 15) {
 		current_data->function = bit;
 	} else {
-		current_data->port |= (bit << (15 - bits));
+		current_data->port |= (bit << ((bits/2) - 5));
 	}
 	bits++;
 #ifdef DEBUG
