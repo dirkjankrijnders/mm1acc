@@ -71,7 +71,8 @@ ISR(INT0_vect) {
 	TCCR0B |= (1 << CS01);
 	period = TCNT0;
 	TCNT0 = 0;
-	if ((period < 200 ) | (period > 215)) // Invalid bit time
+//	if ((period < 200 ) | (period > 215)) // Invalid bit time (F_CPU = 16 MHz)
+	if ((period < (99 * (F_CPU/8000000)) ) | (period > (108 * (F_CPU/8000000)))) // Invalid bit time (F_CPU =  8 MHz)
 	{
 		bits = 0;
 		return;
@@ -135,7 +136,8 @@ void mm1acc_init() {
 	TCNT0 = 0;
 
 	// Setup the the output compare unit to fire mid-way a bit
-	OCR0A = 104;
+//	OCR0A = 104; // F_CPU = 16 000 000
+	OCR0A = 52 * (F_CPU/8000000);  // F_CPU =  8 000 000
 
 	// Setup the interrupt for the output compare unit
 	// Setup the interrupt for the overflow
