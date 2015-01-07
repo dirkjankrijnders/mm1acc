@@ -56,6 +56,7 @@ defined( __AVR_ATtiny84__ )
 volatile uint8_t newdata = 0;
 volatile uint8_t bits = 0;
 volatile uint8_t bit = 0;
+volatile uint8_t byte = 0;
 
 acc_data data1;
 acc_data data2;
@@ -66,16 +67,63 @@ volatile acc_data* swap_data;
 
 uint8_t period;
 
+volatile state_t state = NONE;
+volatile uint8_t dcc_buffer[MAX_DCC_BYTES];
+
+#define data_buf GPIOR1
+
 ISR(INT0_vect) {
 	// Rising edge => reset timer
 	TCCR0B |= (1 << CS01);
 	period = TCNT0;
 	TCNT0 = 0;
 //	if ((period < 200 ) | (period > 215)) // Invalid bit time (F_CPU = 16 MHz)
-	if ((period < (99 * (F_CPU/8000000)) ) | (period > (108 * (F_CPU/8000000)))) // Invalid bit time (F_CPU =  8 MHz)
+	if (((period < (99 * (F_CPU/8000000)) ) | (period > (108 * (F_CPU/8000000))))) // Invalid MM1 bit time (F_CPU =  8 MHz)
 	{
-		bits = 0;
-		return;
+		if ((period > (108 * (F_CPU/8000000)) ) && (period < (124 * (F_CPU/8000000)))) { // DCC 1 bit time (F_CPU =  8 MHz)
+			if (state == NONE) { // Beginning of DCC Preamble
+				state = DCC_PREAMBLE;
+				bits = 0;
+				byte = 0;
+				data_buf |= (1 << bits);
+			} else if (state > DCC_VALID) {
+				if (bits > 7) { // DCC Packet end bit;
+					dcc_buffer[byte] = data_buf;
+					data_buf = 0;
+					byte++;
+					state = DCC_VALID;
+				} else { // Normal DCC Packet bit
+					bits++;
+					data_buf |= (1 << bits);
+				};
+			} else {
+				state = NONE;
+				bits = 0;
+				return;
+			};
+		} else if ((period > (220 * (F_CPU/8000000)) ) && (period < (244 * (F_CPU/8000000))))  {  // DCC 0 bit time (F_CPU =  8 MHz)
+			if (state == DCC_PREAMBLE && bits > 6 && data_buf == 255) { // We have recieved the packet start bit after 8 preamble bits;
+				state = DCC_BYTE;
+				bits = 0;
+				byte = 0;
+				return;
+			} else if (state == DCC_BYTE) {
+				if (bits > 7) { // DCC byte stop bit
+					dcc_buffer[byte] = data_buf;
+					data_buf = 0;
+					byte++;
+					state = DCC_BYTE;
+				} else { // normal databit
+					bits++;
+				}
+			}
+		} else if (state = MM1) {
+			state = NONE;
+			bits = 0;
+			return;
+		};
+	} else if (bits == 0) {
+		state == MM1;
 	}
 #ifdef DEBUG
 	PININT0 = (1 << PD4); // PD4
@@ -84,7 +132,7 @@ ISR(INT0_vect) {
 
 ISR(TIMER_OVF_vect) {
 	// Timer overflowed => we have a pause
-	if (bits == 18) { // New complete byte recieved
+	if (bits == 18 && state == MM1) { // New complete byte recieved
 #ifdef DEBUG
 		PIND = (1 << PD6); // PD6
 #endif
@@ -95,6 +143,7 @@ ISR(TIMER_OVF_vect) {
 		current_data->port = 0;
 		current_data->function = 0;
 		newdata = 1;
+		state = MM1_VALID;
 #ifdef DEBUG
 		PIND = (1 << PD6); // PD6
 #endif
@@ -107,6 +156,9 @@ ISR(TIMER_COMPA_vect) {
 #ifdef DEBUG
 	PIND = (1 << PD5); // PD5
 #endif
+	if (state > MM1_VALID) // DCC, so we're checking length
+		return;
+
 	// Its 52 ms after a rising edge, we need to check the value of the INT0 line again
 	bit = (PININT0 & (1 << PINT0)) ? 1 : 0;
 	if ((bits < 8) & bit) { // Still in the address part
@@ -168,15 +220,24 @@ void mm1acc_init() {
 #endif
 }
 
-uint8_t mm1acc_check(acc_data* mm1acc_data) {
-	if (newdata == 1) {
+state_t mm1acc_check(acc_data* mm1acc_data) {
+	if (state == MM1_VALID) {
 /*		mm1acc_data->address = previous_data->address;
 		mm1acc_data->port = previous_data->port;
 		mm1acc_data->function = previous_data->function;*/
 		*mm1acc_data = *previous_data;
-		newdata = 0;
-		return 1;
+		state = NONE;
+		return MM1_VALID;
 	}
-	return 0;
+	return state;
+}
+
+state_t dccacc_check(uint8_t* data, uint8_t* bytes) {
+	if (state == DCC_VALID) {
+		*data = data_buf;
+		state = NONE;
+		return DCC_VALID;
+	}
+	return state;
 }
 
