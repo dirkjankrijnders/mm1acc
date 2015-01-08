@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:keywords.txt">
+   </FileRef>
+   <FileRef
+      location = "group:LICENSE">
+   </FileRef>
+   <FileRef
+      location = "group:mm1acc.c">
+   </FileRef>
+   <FileRef
+      location = "group:mm1acc.h">
+   </FileRef>
+   <FileRef
+      location = "group:mm1acc.o">
+   </FileRef>
+   <FileRef
+      location = "group:README.md">
+   </FileRef>
+</Workspace>
