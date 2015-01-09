@@ -254,8 +254,8 @@ void mm1acc_init() {
 	DDRINT0 &= ~(1 << PINT0);
 	
 #ifdef DEBUG
-	// PD4, 5, 6 (arduino pin 4, 5, 6) as output for debug
-	DDRD |= 	 ((1<<PD4) | (1 <<PD5) | (1 << PD6));
+	// PD3, 4, 5, 6 (arduino pin 3, 4, 5, 6) as output for debug
+	DDRD |= ((1 << PD3) | (1<<PD4) | (1 <<PD5) | (1 << PD6));
 #endif
 }
 
