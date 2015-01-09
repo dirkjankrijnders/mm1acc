@@ -102,8 +102,8 @@ ISR(INT0_vect) {
 				PIND = (1 << PD3); // PD6
 			} else { // Normal DCC Packet bit
 				PIND = (1 << PD5);
-				bits++;
 				data_buf |= (1 << bits);
+				bits++;
 				PIND = (1 << PD5);
 			};
 		} else {
