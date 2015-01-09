@@ -57,6 +57,7 @@ volatile uint8_t newdata = 0;
 volatile uint8_t bits = 0;
 volatile uint8_t bit = 0;
 volatile uint8_t byte = 0;
+volatile uint8_t old_byte = 0;
 
 acc_data data1;
 acc_data data2;
@@ -98,6 +99,7 @@ ISR(INT0_vect) {
 				dcc_buffer[byte] = data_buf;
 				data_buf = 0;
 				bits = 0;
+				old_byte = byte;
 				state = DCC_VALID;
 				PIND = (1 << PD3); // PD6
 			} else { // Normal DCC Packet bit
@@ -271,13 +273,15 @@ state_t mm1acc_check(acc_data* mm1acc_data) {
 
 state_t dccacc_check(uint8_t* data, uint8_t* bytes) {
 	if (state == DCC_VALID) {
-		*data = data_buf;
-		*bytes = byte;
+		uint8_t i = 0;
+		for (i; i <= old_byte; i++)
+			data[i] = dcc_buffer[i];
+		*bytes = old_byte;
 		state = NONE;
 		return DCC_VALID;
 	}
 	*data = data_buf;
-	*bytes = bits;
+	*bytes = byte;
 	return state;
 }
 
