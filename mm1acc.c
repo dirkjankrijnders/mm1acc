@@ -7,6 +7,8 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
+
 #include "mm1acc.h"
 
 // Application specific defines
@@ -54,7 +56,7 @@ defined( __AVR_ATtiny84__ )
 #endif
 
 volatile uint8_t newdata = 0;
-volatile uint8_t bits = 0;
+volatile int8_t bits = 7;
 volatile uint8_t bit = 0;
 volatile uint8_t byte = 0;
 volatile uint8_t old_byte = 0;
@@ -69,11 +71,11 @@ volatile acc_data* swap_data;
 uint8_t period;
 
 volatile state_t state = NONE;
-volatile uint8_t dcc_buffer[MAX_DCC_BYTES];
+volatile uint8_t dcc_buffer[MAX_DCC_SIZE];
 
 volatile uint8_t overflow = 0;
 
-#define data_buf GPIOR1
+#define data_buf GPIOR2
 
 ISR(INT0_vect) {
 	// Rising edge => reset timer
@@ -87,68 +89,73 @@ ISR(INT0_vect) {
 			state = MM1;
 //		};
 	} else if (overflow == 0 && (period > (108 * (F_CPU/8000000)) ) && (period < (123 * (F_CPU/8000000)))) { // DCC 1 bit time (F_CPU =  8 MHz)
-		PIND = (1 << PD6); // PD6
 		if (state == NONE) { // Beginning of DCC Preamble
 			state = DCC_PREAMBLE;
-			bits = 0;
+			data_buf = 0;
+			bits = 7;
 			byte = 0;
-			data_buf |= (1 << bits);
+			//data_buf |= (1 << bits);
 		} else if (state > DCC_VALID) {
-			if (bits > 7 && state == DCC_BYTE) { // DCC Packet end bit;
+			if (bits < 0 && state == DCC_BYTE) { // DCC Packet end bit;
 				PIND = (1 << PD3); // PD6
 				dcc_buffer[byte] = data_buf;
 				data_buf = 0;
-				bits = 0;
+				bits = 7;
 				old_byte = byte;
 				state = DCC_VALID;
 				PIND = (1 << PD3); // PD6
 			} else { // Normal DCC Packet bit
 				PIND = (1 << PD5);
 				data_buf |= (1 << bits);
-				bits++;
+				bits--;
 				PIND = (1 << PD5);
 			};
 		} else {
+			PIND = (1 << PD6); // PD6
 			state = NONE;
-			bits = 0;
+			bits = 7;
 			PIND = (1 << PD6); // PD6
 			overflow = 0;
 			return;
 		};
-		PIND = (1 << PD6); // PD6
+//		PIND = (1 << PD6); // PD6
 	} else if (overflow == 1 && (period > (70 * (F_CPU/8000000)) ) && (period < (120 * (F_CPU/8000000))))  {  // DCC 0 bit time (F_CPU =  8 MHz)
-		PIND = (1 << PD4); // PD6
-		if (state == DCC_PREAMBLE && bits > 6 && data_buf == 255) { // We have recieved the packet start bit after 8 preamble bits;
+		overflow = 0;
+		if (state == DCC_PREAMBLE && bits < 12 && data_buf == 255) { // We have recieved the packet start bit after 8 preamble bits;
 			state = DCC_BYTE;
 			data_buf = 0;
-			bits = 0;
+			bits = 7;
 			byte = 0;
-			PIND = (1 << PD4); // PD6
 			overflow = 0;
 			return;
 		} else if (state == DCC_BYTE) {
-			if (bits > 7) { // && state == DCC_BYTE) ? // DCC byte stop bit
+			if (bits < 0) { // && state == DCC_BYTE) ? // DCC byte stop bit
+				PIND = (1 << PD4); // PD6
 				dcc_buffer[byte] = data_buf;
 				data_buf = 0;
+				bits = 7;
 				byte++;
-				bits= 0;
-				state = DCC_BYTE;
+				PIND = (1 << PD4); // PD6
 			} else { // normal databit
 				PIND = (1 << PD5);
-				bits++;
+				bits--;
 				PIND = (1 << PD5);
 			}
 		} else { //Should not happen
+/*			PIND = (1 << PD6); // PD6
 			state = NONE;
-			bits = 0;
+			bits = 7;
 			byte = 0;
 			data_buf = 0;
+			PIND = (1 << PD6); // PD6
+ */
 		}
-		PIND = (1 << PD4); // PD6
 	} else if (state == MM1) {
+		PIND = (1 << PD6); // PD6
 		state = NONE;
-		bits = 0;
+		//bits = 0;
 		overflow = 0;
+		PIND = (1 << PD6); // PD6
 		return;
 	};
 	overflow = 0;
@@ -163,7 +170,7 @@ ISR(TIMER_OVF_vect) {
 #warning USING Overflow
 	if (overflow == 0){
 		TCNT0 = 0;
-		overflow = 1;
+	overflow = 1;
 		return;
 	}
 	overflow = 0;
@@ -185,7 +192,7 @@ ISR(TIMER_OVF_vect) {
 		PIND = (1 << PD6); // PD6
 #endif
 	};
-	bits = 0;
+	//bits = 0;
 	state = NONE;
 	TCCR0B &= !(1 << CS01);
 }
@@ -206,7 +213,7 @@ ISR(TIMER_COMPA_vect) {
 	} else {
 		current_data->port |= (bit << ((bits/2) - 5));
 	}
-	bits++;
+//	bits++;
 #ifdef DEBUG
 	PIND ^= (1 << PD5); // PD5
 #endif
@@ -271,17 +278,26 @@ state_t mm1acc_check(acc_data* mm1acc_data) {
 	return state;
 }
 
-state_t dccacc_check(uint8_t* data, uint8_t* bytes) {
+state_t dccacc_check(t_message* data) {
+	uint8_t i = 0;
 	if (state == DCC_VALID) {
-		uint8_t i = 0;
-		for (i; i <= old_byte; i++)
-			data[i] = dcc_buffer[i];
-		*bytes = old_byte;
+		for (; i <= old_byte; i++){
+			data->dcc[i] = dcc_buffer[i];
+			dcc_buffer[i] = 0;
+		}
+		data->size = old_byte+1;
 		state = NONE;
 		return DCC_VALID;
 	}
-	*data = data_buf;
-	*bytes = byte;
+/*	for (;i <= MAX_DCC_BYTES; i++) {
+		data[i] = 0;
+	}*/
+	data->size = 0;
 	return state;
 }
 
+void dcc_ack() {
+	PINB = (1 << PB2);
+	_delay_ms(7);
+	PINB = (1 << PB2);
+}
