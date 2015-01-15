@@ -97,24 +97,18 @@ ISR(INT0_vect) {
 			//data_buf |= (1 << bits);
 		} else if (state > DCC_VALID) {
 			if (bits < 0 && state == DCC_BYTE) { // DCC Packet end bit;
-				PIND = (1 << PD3); // PD6
 				dcc_buffer[byte] = data_buf;
 				data_buf = 0;
 				bits = 7;
 				old_byte = byte;
 				state = DCC_VALID;
-				PIND = (1 << PD3); // PD6
 			} else { // Normal DCC Packet bit
-				PIND = (1 << PD5);
 				data_buf |= (1 << bits);
 				bits--;
-				PIND = (1 << PD5);
 			};
 		} else {
-			PIND = (1 << PD6); // PD6
 			state = NONE;
 			bits = 7;
-			PIND = (1 << PD6); // PD6
 			overflow = 0;
 			return;
 		};
@@ -130,16 +124,13 @@ ISR(INT0_vect) {
 			return;
 		} else if (state == DCC_BYTE) {
 			if (bits < 0) { // && state == DCC_BYTE) ? // DCC byte stop bit
-				PIND = (1 << PD4); // PD6
 				dcc_buffer[byte] = data_buf;
 				data_buf = 0;
 				bits = 7;
 				byte++;
 				PIND = (1 << PD4); // PD6
 			} else { // normal databit
-				PIND = (1 << PD5);
 				bits--;
-				PIND = (1 << PD5);
 			}
 		} else { //Should not happen
 /*			PIND = (1 << PD6); // PD6
@@ -151,11 +142,9 @@ ISR(INT0_vect) {
  */
 		}
 	} else if (state == MM1) {
-		PIND = (1 << PD6); // PD6
 		state = NONE;
 		//bits = 0;
 		overflow = 0;
-		PIND = (1 << PD6); // PD6
 		return;
 	};
 	overflow = 0;
