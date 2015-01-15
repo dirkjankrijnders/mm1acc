@@ -128,7 +128,6 @@ ISR(INT0_vect) {
 				data_buf = 0;
 				bits = 7;
 				byte++;
-				PIND = (1 << PD4); // PD6
 			} else { // normal databit
 				bits--;
 			}
